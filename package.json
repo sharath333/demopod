@@ -1,0 +1,15 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "demopod.js",
+  "scripts": {
+    "test": "node demopod.js"
+  },
+  "author": "Sharath",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.17.1",
+    "express": "^4.15.2"
+  }
+}
