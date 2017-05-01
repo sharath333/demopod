@@ -429,6 +429,61 @@ router.route('/questions/:PODID').get(function (req, res) {
     });
 });
 
+// Http method: POST
+// URI        : /questions
+// Posts the :PODQUESTIONID, :PODANSWERID answers for a given :PODID provided by the rep identified by :EMAIL into the table reps_answers
+router.route('/questions').post(function (req, res) {
+
+    if ("application/json" !== req.get('Content-Type')) {
+        res.set('Content-Type', 'application/json').status(415).send(JSON.stringify({
+            status: 415,
+            message: "Wrong content-type. Only application/json is supported",
+            detailed_message: null
+        }));
+        return;
+    }
+    oracledb.getConnection(connectionProperties, function (err, connection) {
+        if (err) {
+            // Error connecting to DB
+            res.set('Content-Type', 'application/json').status(500).send(JSON.stringify({
+                status: 500,
+                message: "Error connecting to DB",
+                detailed_message: err.message
+            }));
+			doRelease(connection);
+        }
+		var bindvars={
+			PODID: { type: oracledb.NUMBER, dir : oracledb.BIND_IN, val : req.body.PODID },
+			PODQUESTIONID: { type: oracledb.NUMBER, dir : oracledb.BIND_IN, val : req.body.PODQUESTIONID },
+			EMAIL: { type: oracledb.STRING, dir : oracledb.BIND_IN, val : req.body.EMAIL },
+			PODANSWERID: { type: oracledb.NUMBER, dir : oracledb.BIND_IN, val : req.body.PODANSWERID }
+		}
+		
+		console.log("insert into reps_answers (podid, podquestionid, rep_email, podanswerid) values ", "(:PODID, :PODQUESTIONID, :EMAIL, :PODANSWERID) " +  req.body.PODID+" "+ req.body.PODQUESTIONID +" "+ req.body.EMAIL+" "+ req.body.PODANSWERID+" ");
+        connection.execute("INSERT INTO REPS_ANSWERS VALUES " + "(:PODID, :PODQUESTIONID, :EMAIL, :PODANSWERID) ", bindvars, {
+				autoCommit: true,
+                outFormat: oracledb.OBJECT // Return the result as Object
+            },
+            function (err, result) {
+                if (err) {
+                    // Error
+                    res.set('Content-Type', 'application/json');
+                    res.status(400).send(JSON.stringify({
+                        status: 400,
+                        message: err.message.indexOf("ORA-00001") > -1 ? "Response already exists for the rep" : "Input Error",
+                        detailed_message: err.message
+                    }));
+					doRelease(connection);
+                } 
+                // Successfully created the resource
+                res.status(201).set('Location', '/questions/').end();
+               
+                // Release the connection
+                doRelease(connection);
+            });
+    });
+});
+
 app.use('/', router);
 app.listen(PORT);
 
