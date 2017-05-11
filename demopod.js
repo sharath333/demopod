@@ -408,6 +408,92 @@ router.route('/questions/:PODID').get(function (req, res) {
             return;
         }
 
+        connection.execute("select q.podquestionid, a.podanswerid, q.pod_question, a.answer from demopod_questions q right join demopod_answers a on q.podquestionid = a.podquestionid where q.podid= :PODID order by q.podquestionid, a.podanswerid", [req.params.PODID], {
+            outFormat: oracledb.OBJECT // Return the result as Object
+        }, function (err, result) {
+            if (err || result.rows.length < 1) {
+                res.set('Content-Type', 'application/json');
+                var status = err ? 500 : 404;
+                res.status(status).send(JSON.stringify({
+                    status: status,
+                    message: err ? "Error getting the questions" : "demopod id doesn't exist",
+                    detailed_message: err ? err.message : ""
+                }));
+				doRelease(connection);
+            }
+           
+            var jsonQueryResult = result.rows;
+            
+            console.log(" ");
+            console.log( "The jsonQueryResult=" + JSON.stringify(jsonQueryResult));
+            
+            var qAndA = {PODQUESTIONID: 10, POD_QUESTION: "", ANSWER: []};  // Object to hold an individual question and the array of answers
+            var anAnswer = {PODANSWERID: 10, ANSWER: ""};                   // Object to hold an individual answer
+            var jsonResult = [];                                            // Object array to hold the array of qAndA objects
+            var i = 0;                                                      // index for looping through all the query results
+            var j = 0;                                                      // Index for the array holding the results to return
+
+            while ( i < jsonQueryResult.length )
+            {
+                var currentQID = jsonQueryResult[i]["PODQUESTIONID"];
+
+                console.log("currentQID=" + currentQID );
+                console.log(" ");
+                
+                qAndA = new Object();
+
+                qAndA["PODQUESTIONID"] = currentQID;
+                qAndA["POD_QUESTION"] = jsonQueryResult[i]["POD_QUESTION"];
+                qAndA["ANSWER"] = [];
+
+                while ( i < jsonQueryResult.length && currentQID == jsonQueryResult[i]["PODQUESTIONID"] ) {
+                    anAnswer = new Object();
+
+                    anAnswer["PODANSWERID"] = jsonQueryResult[i]["PODANSWERID"];
+                    anAnswer["ANSWER"] = jsonQueryResult[i]["ANSWER"];
+                    qAndA["ANSWER"].push(anAnswer);
+                    
+                    console.log("Inner loop: i=" + i + "anAnswer=" + JSON.stringify(anAnswer));
+                    
+                    i++;
+                }
+                // Add this question and its answers to the end reults array
+                //
+                console.log(" ");
+                console.log("Processed Question with Answers: " + JSON.stringify(qAndA));
+                jsonResult.push(qAndA);
+                j++;
+            }
+            
+            console.log(" ");
+            console.log("About to return result:" + JSON.stringify(jsonResult));
+            
+            res.contentType('application/json').status(200).send(JSON.stringify(jsonResult));
+            //res.contentType('application/json').status(200).send(JSON.stringify(result.rows));
+
+            // Release the connection
+            doRelease(connection);
+        });
+    });
+});
+
+/*
+ Below is the original code for the questions GET
+ 
+router.route('/questions/:PODID').get(function (req, res) {
+
+    oracledb.getConnection(connectionProperties, function (err, connection) {
+        if (err) {
+            // Error connecting to DB
+            res.set('Content-Type', 'application/json');
+            res.status(500).send(JSON.stringify({
+                status: 500,
+                message: "Error connecting to DB",
+                detailed_message: err.message
+            }));
+            return;
+        }
+
         connection.execute("select * from demopod_questions_random where podid = :PODID and rownum < 6", [req.params.PODID], {
             outFormat: oracledb.OBJECT // Return the result as Object
         }, function (err, result) {
@@ -428,6 +514,7 @@ router.route('/questions/:PODID').get(function (req, res) {
         });
     });
 });
+*/
 
 // Http method: POST
 // URI        : /questions
