@@ -408,7 +408,7 @@ router.route('/questions/:PODID').get(function (req, res) {
             return;
         }
 
-        connection.execute("select q.podquestionid, a.podanswerid, q.pod_question, a.answer from demopod_questions q right join demopod_answers a on q.podquestionid = a.podquestionid where q.podid= :PODID order by q.podquestionid, a.podanswerid", [req.params.PODID], {
+        connection.execute("select q.podquestionid, a.podanswerid, q.pod_question, a.answer from demopod_questions_random q right join demopod_answers a on q.podquestionid = a.podquestionid where q.podid= :PODID order by q.podquestionid, a.podanswerid, DBMS_RANDOM.RANDOM", [req.params.PODID], {
             outFormat: oracledb.OBJECT // Return the result as Object
         }, function (err, result) {
             if (err || result.rows.length < 1) {
@@ -427,11 +427,14 @@ router.route('/questions/:PODID').get(function (req, res) {
             console.log(" ");
             console.log( "The jsonQueryResult=" + JSON.stringify(jsonQueryResult));
             
-            var qAndA = {PODQUESTIONID: 10, POD_QUESTION: "", ANSWER: []};  // Object to hold an individual question and the array of answers
-            var anAnswer = {PODANSWERID: 10, ANSWER: ""};                   // Object to hold an individual answer
-            var jsonResult = [];                                            // Object array to hold the array of qAndA objects
-            var i = 0;                                                      // index for looping through all the query results
-            var j = 0;                                                      // Index for the array holding the results to return
+            var qAndA = {PODQUESTIONID: 10, POD_QUESTION: "", ANSWER: []};
+            var anAnswer = {PODANSWERID: 10, ANSWER: ""};
+            var jsonResult = [];                                                // Array to hold all the questions. We return a subset of these.
+            var jsonRandomResult = [];                                          // Array to hold a randomized list of questions (its what we return)
+            var i = 0;                                                          // index for looping through all the query results
+            var j = 0;                                                          // Index for the array holding the results to return
+            var indexList = [];                                                 // Array to hold a list of random indexes
+            //var questionNum = 0;                                                // The number of randome questions we are going to return
 
             while ( i < jsonQueryResult.length )
             {
@@ -466,10 +469,31 @@ router.route('/questions/:PODID').get(function (req, res) {
             }
             
             console.log(" ");
-            console.log("About to return result:" + JSON.stringify(jsonResult));
+            console.log("List of all questions and answers:" + JSON.stringify(jsonResult));
+            console.log("jsonResult.length=" + jsonResult.length);
+
+            // Create an array of random numbers ranging from 0 to the length of jsonResult
+            while(indexList.length < 6){
+                var randomnumber = Math.ceil(Math.random()*jsonResult.length) - 1;
+
+                // Make sure we don't have a negative number
+                //randomnumber = randomnumber < 0 ? 0 : randomnumber;
+
+                if(indexList.indexOf(randomnumber) > -1) continue;
+                indexList[indexList.length] = randomnumber;
+            }
+            console.log("Random index list:" + JSON.stringify( indexList ));
+
+            for (var j=0; j < indexList.length; j++ ) {
+                jsonRandomResult.push( jsonResult[indexList[j]] );
+                console.log("Pushing..." + JSON.stringify(jsonResult[indexList[j]]) );
+            }
+
+            console.log(" ");
+            console.log("The randomized return will be: " + JSON.stringify(jsonRandomResult));
+            console.log(" ");
             
-            res.contentType('application/json').status(200).send(JSON.stringify(jsonResult));
-            //res.contentType('application/json').status(200).send(JSON.stringify(result.rows));
+            res.contentType('application/json').status(200).send(JSON.stringify(jsonRandomResult));
 
             // Release the connection
             doRelease(connection);
@@ -479,8 +503,8 @@ router.route('/questions/:PODID').get(function (req, res) {
 
 /*
  Below is the original code for the questions GET
- 
-router.route('/questions/:PODID').get(function (req, res) {
+ */
+router.route('/randomquestions/:PODID').get(function (req, res) {
 
     oracledb.getConnection(connectionProperties, function (err, connection) {
         if (err) {
@@ -514,7 +538,7 @@ router.route('/questions/:PODID').get(function (req, res) {
         });
     });
 });
-*/
+/* */
 
 // Http method: POST
 // URI        : /questions
