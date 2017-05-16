@@ -420,81 +420,82 @@ router.route('/questions/:PODID').get(function (req, res) {
                     detailed_message: err ? err.message : ""
                 }));
 				doRelease(connection);
-            }
-           
-            var jsonQueryResult = result.rows;
-            
-            console.log(" ");
-            console.log( "The jsonQueryResult=" + JSON.stringify(jsonQueryResult));
-            
-            var qAndA = {PODQUESTIONID: 10, POD_QUESTION: "", ANSWER: []};
-            var anAnswer = {PODANSWERID: 10, ANSWER: ""};
-            var jsonResult = [];                                                // Array to hold all the questions. We return a subset of these.
-            var jsonRandomResult = [];                                          // Array to hold a randomized list of questions (its what we return)
-            var i = 0;                                                          // index for looping through all the query results
-            var j = 0;                                                          // Index for the array holding the results to return
-            var indexList = [];                                                 // Array to hold a list of random indexes
-            //var questionNum = 0;                                                // The number of randome questions we are going to return
+            } else {
+                
+                var jsonQueryResult = result.rows;
 
-            while ( i < jsonQueryResult.length )
-            {
-                var currentQID = jsonQueryResult[i]["PODQUESTIONID"];
+                console.log(" ");
+                console.log( "The jsonQueryResult=" + JSON.stringify(jsonQueryResult));
 
-                console.log("currentQID=" + currentQID );
+                var qAndA = {PODQUESTIONID: 10, POD_QUESTION: "", ANSWER: []};
+                var anAnswer = {PODANSWERID: 10, ANSWER: ""};
+                var jsonResult = [];                                                // Array to hold all the questions. We return a subset of these.
+                var jsonRandomResult = [];                                          // Array to hold a randomized list of questions (its what we return)
+                var i = 0;                                                          // index for looping through all the query results
+                var j = 0;                                                          // Index for the array holding the results to return
+                var indexList = [];                                                 // Array to hold a list of random indexes
+                //var questionNum = 0;                                                // The number of randome questions we are going to return
+
+                while ( i < jsonQueryResult.length )
+                {
+                    var currentQID = jsonQueryResult[i]["PODQUESTIONID"];
+
+                    console.log("currentQID=" + currentQID );
+                    console.log(" ");
+
+                    qAndA = new Object();
+
+                    qAndA["PODQUESTIONID"] = currentQID;
+                    qAndA["POD_QUESTION"] = jsonQueryResult[i]["POD_QUESTION"];
+                    qAndA["ANSWER"] = [];
+
+                    while ( i < jsonQueryResult.length && currentQID == jsonQueryResult[i]["PODQUESTIONID"] ) {
+                        anAnswer = new Object();
+
+                        anAnswer["PODANSWERID"] = jsonQueryResult[i]["PODANSWERID"];
+                        anAnswer["ANSWER"] = jsonQueryResult[i]["ANSWER"];
+                        qAndA["ANSWER"].push(anAnswer);
+
+                        console.log("Inner loop: i=" + i + "anAnswer=" + JSON.stringify(anAnswer));
+
+                        i++;
+                    }
+                    // Add this question and its answers to the end reults array
+                    //
+                    console.log(" ");
+                    console.log("Processed Question with Answers: " + JSON.stringify(qAndA));
+                    jsonResult.push(qAndA);
+                    j++;
+                }
+
+                console.log(" ");
+                console.log("List of all questions and answers:" + JSON.stringify(jsonResult));
+                console.log("jsonResult.length=" + jsonResult.length);
+
+                // Create an array of random numbers ranging from 0 to the length of jsonResult
+                while(indexList.length < 6){
+                    var randomnumber = Math.ceil(Math.random()*jsonResult.length) - 1;
+
+                    // Make sure we don't have a negative number
+                    //randomnumber = randomnumber < 0 ? 0 : randomnumber;
+
+                    if(indexList.indexOf(randomnumber) > -1) continue;
+                    indexList[indexList.length] = randomnumber;
+                }
+                console.log("Random index list:" + JSON.stringify( indexList ));
+
+                for (var j=0; j < indexList.length; j++ ) {
+                    jsonRandomResult.push( jsonResult[indexList[j]] );
+                    console.log("Pushing..." + JSON.stringify(jsonResult[indexList[j]]) );
+                }
+
+                console.log(" ");
+                console.log("The randomized return will be: " + JSON.stringify(jsonRandomResult));
                 console.log(" ");
                 
-                qAndA = new Object();
-
-                qAndA["PODQUESTIONID"] = currentQID;
-                qAndA["POD_QUESTION"] = jsonQueryResult[i]["POD_QUESTION"];
-                qAndA["ANSWER"] = [];
-
-                while ( i < jsonQueryResult.length && currentQID == jsonQueryResult[i]["PODQUESTIONID"] ) {
-                    anAnswer = new Object();
-
-                    anAnswer["PODANSWERID"] = jsonQueryResult[i]["PODANSWERID"];
-                    anAnswer["ANSWER"] = jsonQueryResult[i]["ANSWER"];
-                    qAndA["ANSWER"].push(anAnswer);
-                    
-                    console.log("Inner loop: i=" + i + "anAnswer=" + JSON.stringify(anAnswer));
-                    
-                    i++;
-                }
-                // Add this question and its answers to the end reults array
-                //
-                console.log(" ");
-                console.log("Processed Question with Answers: " + JSON.stringify(qAndA));
-                jsonResult.push(qAndA);
-                j++;
+                res.contentType('application/json').status(200).send(JSON.stringify(jsonRandomResult));
             }
             
-            console.log(" ");
-            console.log("List of all questions and answers:" + JSON.stringify(jsonResult));
-            console.log("jsonResult.length=" + jsonResult.length);
-
-            // Create an array of random numbers ranging from 0 to the length of jsonResult
-            while(indexList.length < 6){
-                var randomnumber = Math.ceil(Math.random()*jsonResult.length) - 1;
-
-                // Make sure we don't have a negative number
-                //randomnumber = randomnumber < 0 ? 0 : randomnumber;
-
-                if(indexList.indexOf(randomnumber) > -1) continue;
-                indexList[indexList.length] = randomnumber;
-            }
-            console.log("Random index list:" + JSON.stringify( indexList ));
-
-            for (var j=0; j < indexList.length; j++ ) {
-                jsonRandomResult.push( jsonResult[indexList[j]] );
-                console.log("Pushing..." + JSON.stringify(jsonResult[indexList[j]]) );
-            }
-
-            console.log(" ");
-            console.log("The randomized return will be: " + JSON.stringify(jsonRandomResult));
-            console.log(" ");
-            
-            res.contentType('application/json').status(200).send(JSON.stringify(jsonRandomResult));
-
             // Release the connection
             doRelease(connection);
         });
@@ -503,7 +504,7 @@ router.route('/questions/:PODID').get(function (req, res) {
 
 /*
  Below is the original code for the questions GET
- */
+
 router.route('/randomquestions/:PODID').get(function (req, res) {
 
     oracledb.getConnection(connectionProperties, function (err, connection) {
@@ -538,7 +539,7 @@ router.route('/randomquestions/:PODID').get(function (req, res) {
         });
     });
 });
-/* */
+*/
 
 // Http method: POST
 // URI        : /questions
